@@ -1,11 +1,13 @@
 ﻿using System;
+using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
+using Discord.Interactions;
 using Discord.WebSocket;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System.Linq;
 using Newtonsoft.Json.Linq;
 
 namespace DiscordBot
@@ -15,28 +17,39 @@ namespace DiscordBot
         private DiscordSocketClient _client;
         private CommandService _commands;
         private IServiceProvider _services;
-        private readonly string[] _botPrefixes = new[] { "!", "?", "-" };
-
-        private Task _client_Log(LogMessage arg)
-        {
-            Console.WriteLine(arg);
-            return Task.CompletedTask;
-        }
+        private IConfigurationRoot _config;
 
         public async Task RunBotAsync()
         {
-            _client = new DiscordSocketClient();
-            _commands = new CommandService();
+            _config = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .Build();
+
+            _client = new DiscordSocketClient(new DiscordSocketConfig
+            {
+                LogLevel = LogSeverity.Verbose,
+                MessageCacheSize = 1000,
+                GatewayIntents = GatewayIntents.All
+            });
+
+            _commands = new CommandService(new CommandServiceConfig
+            {
+                CaseSensitiveCommands = false,
+                DefaultRunMode = Discord.Commands.RunMode.Async,
+                LogLevel = LogSeverity.Verbose
+            });
+
             _services = new ServiceCollection()
                 .AddSingleton(_client)
                 .AddSingleton(_commands)
+                .AddSingleton(_config)
                 .BuildServiceProvider();
 
-            _client.Log += _client_Log;
+            _client.Log += Log;
 
             await RegisterCommandsAsync();
 
-            string token = "BOT_TOKEN";
+            string token = "MTA4MjMxMjk2ODUyNTU4MjQ2Nw.GDylBr.kb-7frWj50JFX8FagK0TmF7GACBW94rL2R8SCQ";
             await _client.LoginAsync(TokenType.Bot, token);
 
             await _client.StartAsync();
@@ -44,6 +57,11 @@ namespace DiscordBot
             await Task.Delay(-1);
         }
 
+        private Task Log(LogMessage arg)
+        {
+            Console.WriteLine(arg);
+            return Task.CompletedTask;
+        }
 
         public async Task RegisterCommandsAsync()
         {
@@ -51,19 +69,20 @@ namespace DiscordBot
             await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
         }
 
-
         private async Task HandleCommandAsync(SocketMessage arg)
         {
             var message = arg as SocketUserMessage;
             var context = new SocketCommandContext(_client, message);
 
             int argPos = 0;
-            string prefix = _botPrefixes.FirstOrDefault(p => message.Content.StartsWith(p));
-            if (message.Author.IsBot || prefix == null || !message.HasStringPrefix(prefix, ref argPos)) return;
-
-            var result = await _commands.ExecuteAsync(context, argPos, _services);
-            if (!result.IsSuccess)
-                Console.WriteLine(result.ErrorReason);
+            if (message.HasStringPrefix("!", ref argPos))
+            {
+                var result = await _commands.ExecuteAsync(context, argPos, _services);
+                if (!result.IsSuccess)
+                {
+                    Console.WriteLine(result.ErrorReason);
+                }
+            }
         }
     }
 }
