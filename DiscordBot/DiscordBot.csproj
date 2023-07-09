@@ -251,12 +251,15 @@
   <ItemGroup>
     <Compile Include="Bot.cs" />
     <Compile Include="Commands\PingCommnad.cs" />
+    <Compile Include="Commands\TruthOrDareCommand.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="config.json" />
+    <None Include="Data\dares.json" />
+    <None Include="Data\questions.json" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup />
